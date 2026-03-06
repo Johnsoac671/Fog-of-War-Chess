@@ -33,6 +33,13 @@ class DarkChess():
         
         return attacking_squares | active_pieces
     
+    def copy(self):
+        clone = DarkChess()
+        clone.board = self.board.copy()
+        clone.variant = self.variant
+        
+        return clone
+    
     def reset(self):
         self.board = get_initial_chess_object(self.variant)
         
