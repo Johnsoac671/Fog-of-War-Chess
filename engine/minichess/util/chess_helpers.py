@@ -37,7 +37,7 @@ def get_settings(config_file_path: str):
 
 def get_initial_chess_object(full_name: str):
     """Takes the name of the variant to play (e.g. 8x8standard) and returns a fully initialized Chess-object."""
-    minichess_path =  os.path.join(os.getcwd(), "minichess")
+    minichess_path =  os.path.join(os.getcwd(), "engine", "minichess")
     board_path = "{}/boards/{}".format(minichess_path, full_name)
     bitboards, piece_lookup, dims = load_board(board_path)
 

@@ -3,6 +3,7 @@ import numpy as np
 
 from .fastchess_utils import B_0, B_1, flat, has_bit, inv_color, set_bit, true_bits, unflat, unset_bit, more_than_one_bit_set, agent_state, INVERSE_PIECE_LOOKUP
 
+np.seterr(over="ignore") # just hides annoying warnings in the console 
 
 class Chess:
     def __init__(
@@ -63,7 +64,7 @@ class Chess:
 
         if has_en_passant is None:
             self.has_en_passant = False
-            self.en_passant = np.array([-1, -1], dtype=np.uint8)
+            self.en_passant = np.array([-1, -1], dtype=np.int8)
         else:
             self.has_en_passant = has_en_passant
             self.en_passant = en_passant
