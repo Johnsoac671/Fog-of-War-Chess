@@ -13,6 +13,8 @@ Starter repository for comparing AI agents in a Dark Chess / Fog-of-War MiniChes
 - MCTS draft agent
 - Evaluation script for head-to-head matches
 
+## Minichess Implementation
+https://github.com/patrik-ha/explainable-minichess or [https://arxiv.org/abs/2211.05500](https://arxiv.org/abs/2211.05500)
 ## Notes
 
 This is an early draft meant to provide a starting codebase for the team project.
