@@ -1,30 +1,33 @@
-from src.game.state import GameState
-from src.agents.random_agent import RandomAgent
-from src.agents.minimax_agent import MinimaxAgent
+from engine.game.dark_chess import Game
+from engine.agents.random_agents import RandomAgent
 
 
 def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
-    state = GameState.initial_state()
+    state = Game()
     turns = 0
 
-    while not state.is_terminal() and turns < max_turns:
+    while not state.get_result():
+        
+        if turns > max_turns:
+            return "D"
+        
         agent = white_agent if state.current_player == "W" else black_agent
         move = agent.choose_move(state)
 
         if move is None:
             break
 
-        state = state.apply_move(move)
+        state.take_action(move)
         turns += 1
 
-    return state.get_winner()
+    return state.get_result()
 
 
 def run_matches(num_games: int = 10) -> None:
-    white_agent = MinimaxAgent(name="MinimaxWhite", depth=2)
+    white_agent = RandomAgent(name="RandomWhite")
     black_agent = RandomAgent(name="RandomBlack")
 
-    results = {"W": 0, "B": 0, "Draw": 0}
+    results = {"W": 0, "B": 0, "D": 0}
 
     for i in range(num_games):
         winner = play_game(white_agent, black_agent)
@@ -37,4 +40,4 @@ def run_matches(num_games: int = 10) -> None:
 
 
 if __name__ == "__main__":
-    run_matches(10)
+    run_matches(100)

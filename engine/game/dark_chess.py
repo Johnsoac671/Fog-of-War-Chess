@@ -1,10 +1,11 @@
-from engine.minichess.util.chess_helpers import get_initial_chess_object
-from engine.minichess.chess.fastchess_utils import piece_matrix_to_legal_moves, visualize_board
+from engine.game.minichess.util.chess_helpers import get_initial_chess_object
+from engine.game.minichess.chess.fastchess_utils import piece_matrix_to_legal_moves, visualize_board
 
-class DarkChess():
+class Game():
     def __init__(self, variant="5x5gardner"):
         self.board = get_initial_chess_object(variant)
         self.variant = variant
+        self.current_player = "W"
     
     def get_legal_moves(self):
         '''
@@ -13,7 +14,7 @@ class DarkChess():
         return piece_matrix_to_legal_moves(*self.board.legal_moves())
     
     
-    def action(self, move) -> bool:
+    def take_action(self, move) -> bool:
         '''
         performs a move, which can be directly passed from get_legal_moves()
         
@@ -21,8 +22,10 @@ class DarkChess():
         '''
         (i, j), (dx, dy), promotion = move
         self.board.make_move(i, j, dx, dy, promotion)
+        self._swap_player()
         
-        return self.board.game_result() is not None
+    def _swap_player(self):
+        self.current_player = "W" if self.current_player == "B" else "B"
     
     def get_board_state(self):
         '''
@@ -34,17 +37,35 @@ class DarkChess():
         return attacking_squares | active_pieces
     
     def copy(self):
-        clone = DarkChess()
+        clone = Game()
         clone.board = self.board.copy()
         clone.variant = self.variant
+        clone.current_player = self.current_player
         
         return clone
+
+    def get_result(self):
+        result = self.board.game_result() 
+        
+        if result == 1:
+            return "W"
+        elif result == -1:
+            return "B"
+        elif result == 0:
+            return "D"
+        
+        return result
     
     def reset(self):
         self.board = get_initial_chess_object(self.variant)
+        self.current_player = "W"
         
-    def visualize(self):
+    def visualize(self, debug=False):
         
+        if debug:
+            visualize_board(self.board.bitboards, self.board.dims)
+            return
+            
         visible = self.get_board_state()
         
         masked_bitboards = self.board.bitboards.copy()

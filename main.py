@@ -1,32 +1,31 @@
-from src.game.state import GameState
-from src.agents.random_agent import RandomAgent
-from src.agents.minimax_agent import MinimaxAgent
+from engine.game.dark_chess import Game
+from engine.agents.random_agents import RandomAgent
 
 
 def main() -> None:
-    state = GameState.initial_state()
+    state = Game()
 
-    white_agent = MinimaxAgent(name="MinimaxWhite", depth=2)
+    white_agent = RandomAgent(name="RandomWhite")
     black_agent = RandomAgent(name="RandomBlack")
 
     print("Starting game...\n")
-    print(state)
+    state.visualize()
 
-    while not state.is_terminal():
+    while not state.get_result():
         agent = white_agent if state.current_player == "W" else black_agent
         move = agent.choose_move(state)
 
-        if move is None:
+        if move is None: # i don't *think* this can ever actually happen, since this is just what checkmate is, but probably a good idea to keep it
             print(f"{agent.name} has no legal moves.")
             break
 
         print(f"\n{agent.name} chooses move: {move}")
-        state = state.apply_move(move)
-        print(state)
+        state.take_action(move)
+        state.visualize(True)
 
-    winner = state.get_winner()
+    winner = state.get_result()
     print("\nGame Over")
-    print(f"Winner: {winner}")
+    print(f"Winner: {white_agent.name if winner == "W" else black_agent.name if winner == "B" else "Draw"}")
 
 
 if __name__ == "__main__":
