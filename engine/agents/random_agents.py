@@ -1,9 +1,10 @@
 import random
 
 from engine.game.dark_chess import Game
+from agent import Agent
 
 
-class RandomAgent:
+class RandomAgent(Agent):
     def __init__(self, name):
         self.name = name
     
