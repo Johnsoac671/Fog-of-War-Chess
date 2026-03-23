@@ -5,8 +5,8 @@ from engine.agents.random_agents import RandomAgent
 def main() -> None:
     state = Game()
 
-    white_agent = RandomAgent(name="RandomWhite")
-    black_agent = RandomAgent(name="RandomBlack")
+    white_agent = RandomAgent(name="RandomWhite", color="W")
+    black_agent = RandomAgent(name="RandomBlack", color="B")
 
     print("Starting game...\n")
     state.visualize()

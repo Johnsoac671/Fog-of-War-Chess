@@ -1,5 +1,5 @@
 from engine.game.dark_chess import Game
-from engine.agents.random_agents import RandomAgent
+from engine.agents.random_agents import RandomAgent, EagerRandomAgent
 
 
 def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
@@ -24,8 +24,8 @@ def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
 
 
 def run_matches(num_games: int = 10) -> None:
-    white_agent = RandomAgent(name="RandomWhite")
-    black_agent = RandomAgent(name="RandomBlack")
+    white_agent = EagerRandomAgent(name="RandomWhite", color="W")
+    black_agent = RandomAgent(name="RandomBlack", color="B")
 
     results = {"W": 0, "B": 0, "D": 0}
 
