@@ -34,3 +34,4 @@ class EagerRandomAgent(Agent):
                 return move
         
         return random.choice(moves)
+    

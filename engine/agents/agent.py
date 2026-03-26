@@ -7,3 +7,4 @@ class Agent(ABC):
     @abstractmethod
     def choose_move(self, game: Game):
         pass
+    

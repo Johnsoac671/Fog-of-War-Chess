@@ -114,25 +114,34 @@ class Chess:
         
                 
 
+    # modify for dark chess
     def game_result(self):
         """
         Returns the result of the game.
 
         :return int: -1 if black has won, 1 if white has one, 0 if draw. 
         """
+        
+        # white king captured
+        if self.bitboards[1, 5] == 0:
+            return -1
+        # black king captured
+        if self.bitboards[0, 5] == 0:
+            return 1
+        
         if self.legal_move_cache is None:
             self.legal_moves()
 
         if self.ply_count_without_adv > 20 or self.insufficient_material():
             return 0
 
-        if not self.has_legal_moves:
-            if self.any_checkers:
-                # I lost, mate
-                return -1 if self.turn == 1 else 1
-            else:
-                # Stalemate
-                return 0
+        # if not self.has_legal_moves:
+        #     if self.any_checkers:
+        #         # I lost, mate
+        #         return -1 if self.turn == 1 else 1
+        #     else:
+        #         # Stalemate
+        #         return 0
         return None
 
     def agent_board_state(self):
@@ -249,7 +258,8 @@ class Chess:
         else:
             f_to = flat(i + dx, j + dy, self.dims)
 
-        for piece_type in range(5):
+        # allow the king to be unset
+        for piece_type in range(6):
             self.bitboards[enemy_turn, piece_type] = unset_bit(self.bitboards[enemy_turn, piece_type], f_to)
 
         target = unflat(f_to, self.dims)
@@ -487,6 +497,7 @@ class Chess:
 
         return pin_rays
 
+    # TODO: fix en_passant
     def find_and_validate_en_passant_moves(self, all_pieces: np.uint64, opp_pawn_row_inc: np.int8, enemy_turn: bool, king_pos: Tuple[int, int]):
         """Finds all valid en-passant moves in the given position.
 
@@ -519,6 +530,8 @@ class Chess:
             # en_passant_moves &= (self.PAWN_ATTACKS[enemy_turn, i_act, j_act] & self.bitboards[self.turn, 0])
         return en_passant_moves
 
+    # need to modify legal_moves for dark chess,
+    # where king is allowed to be captured.
     def legal_moves(self):
         """
         Finds all legal moves. 
@@ -527,10 +540,13 @@ class Chess:
         """
         if self.legal_move_cache is not None:
             return self.legal_move_cache, self.promotion_move_cache
-        enemy_turn = inv_color(self.turn)
+        # enemy_turn = inv_color(self.turn)
         all_pieces = self.get_all_pieces(False)
         my_pieces = self.get_all_pieces(False, [self.turn])
         enemy_pieces = all_pieces & ~my_pieces
+        
+        # dont care about checkers or pins
+        '''
         my_pawn_row_inc = -1 if self.turn == 1 else 1
         opp_pawn_row_inc = my_pawn_row_inc * -1
         # Get squares that are dangerous for the king
@@ -611,6 +627,8 @@ class Chess:
         # Sweet! Now any piece that falls in this pinned_check_ray has to move only within that.
 
         en_passant_moves = self.find_and_validate_en_passant_moves(all_pieces, opp_pawn_row_inc, enemy_turn, king_pos)
+        
+        '''
 
         legal_moves = np.zeros(self.dims, dtype=np.uint64)
         # Now calculate legal moves from position (i, j)
@@ -622,11 +640,13 @@ class Chess:
         for bit in true_bits(my_pieces):
             i, j = unflat(bit, self.dims)
             moves_to_make = B_0
-            f = flat(i, j, self.dims)
+            # f = flat(i, j, self.dims)
             piece_at = self.piece_at(i, j, self.turn)
             if piece_at == 0:
                 # Can either attack an enemy square, or the en-passant square
-                moves_to_make |= self.PAWN_ATTACKS[self.turn, i, j] & (enemy_pieces | en_passant_moves)
+                # TODO: fix en-passant
+                # moves_to_make |= self.PAWN_ATTACKS[self.turn, i, j] & (enemy_pieces | en_passant_moves)
+                moves_to_make |= self.PAWN_ATTACKS[self.turn, i, j] & (enemy_pieces)
                 # Pushing pawns one step, if there are no pieces in the way
                 single_pawn_moves = (self.PAWN_MOVES_SINGLE[self.turn, i, j] & ~all_pieces)
                 moves_to_make |= single_pawn_moves
@@ -643,12 +663,15 @@ class Chess:
             if piece_at == 3 or piece_at == 4:
                 moves_to_make |= (self.straight_move_magic(all_pieces, i, j) & ~my_pieces)
             if piece_at == 5:
-                moves_to_make |= king_moves
+                # updated for dark chess
+                moves_to_make |= (self.KING_MOVES[i, j] & ~my_pieces)
                 # Castle left
-                if self.can_castle(0, all_pieces, king_danger_squares):
-                    moves_to_make |= self.single_to_bitboard(i, j - 2)
-                if self.can_castle(1, all_pieces, king_danger_squares):
-                    moves_to_make |= self.single_to_bitboard(i, j + 2)
+                # TODO: castling
+                # if self.can_castle(0, all_pieces, king_danger_squares):
+                #     moves_to_make |= self.single_to_bitboard(i, j - 2)
+                # if self.can_castle(1, all_pieces, king_danger_squares):
+                #     moves_to_make |= self.single_to_bitboard(i, j + 2)
+            '''
             # Remove moves that don't deal with check if necessary
             if piece_at != 5 and piece_at != 0:
                 moves_to_make &= (capture_mask | push_mask)
@@ -656,12 +679,14 @@ class Chess:
                 moves_to_make &= (capture_mask | en_passant_capture_mask | push_mask)
             # If it's pinned, restrict the moves to the pinned ray
             moves_to_make &= pin_masks[i, j]
+            '''
             legal_moves[i, j] = moves_to_make
 
         # Now legal_moves is a (m x n) matrix with bitboards designating the legal moves from the field (i, j)
         # And promotions is a (m x n) matrix with bitboards designating that any (pawn)moves to the given square is a promotion
         self.has_legal_moves = np.any(legal_moves > 0)
-        self.any_checkers = checkers != 0
+        self.any_checkers = False
+        # self.any_checkers = checkers != 0
         self.legal_move_cache = legal_moves
         self.promotion_move_cache = promotions
         return legal_moves, promotions

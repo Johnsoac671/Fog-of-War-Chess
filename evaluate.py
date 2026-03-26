@@ -4,6 +4,7 @@ from engine.agents.random_agents import RandomAgent, EagerRandomAgent
 
 def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
     state = Game()
+    # state.visualize(True)
     turns = 0
 
     while not state.get_result():
@@ -19,7 +20,7 @@ def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
 
         state.take_action(move)
         turns += 1
-
+    state.visualize(True)
     return state.get_result()
 
 

@@ -19,4 +19,6 @@ class Piece:
         return values.get(self.kind, 0)
 
     def symbol(self) -> str:
+        # pieces are uppercase for white, lowercase for black
         return self.kind if self.color == "W" else self.kind.lower()
+    

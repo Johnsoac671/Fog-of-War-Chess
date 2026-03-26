@@ -48,7 +48,6 @@ def get_initial_chess_object(full_name: str):
 
     data = np.load("{}/chess/magics/{}x{}/diagonals.npz".format(minichess_path, *dims))
     diagonal_hash_table, diagonal_magics, diag_shift = data["hash_table"], data["magics"], data["shift"]
-
     data = np.load("{}/chess/magics/{}x{}/straights.npz".format(minichess_path, *dims))
     straight_hash_table, straight_magics, straight_shift = data["hash_table"], data["magics"], data["shift"]
     PAWN_MOVES_SINGLE = pawn_moves_single(dims)

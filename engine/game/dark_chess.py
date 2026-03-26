@@ -53,8 +53,8 @@ class Game():
             return "B"
         elif result == 0:
             return "D"
-        
-        return result
+        # None, aka game is still going.
+        return None
     
     def reset(self):
         self.board = get_initial_chess_object(self.variant)
@@ -76,3 +76,4 @@ class Game():
             masked_bitboards[enemy, piece_type] &= visible
         
         visualize_board(masked_bitboards, self.board.dims)
+        
