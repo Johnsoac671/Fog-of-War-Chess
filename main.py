@@ -1,11 +1,12 @@
 from engine.game.dark_chess import Game
 from engine.agents.random_agents import RandomAgent
+from engine.agents.monte_carlo_agent import MonteCarloAgent
 
 
 def main() -> None:
     state = Game()
 
-    white_agent = RandomAgent(name="RandomWhite", color="W")
+    white_agent = MonteCarloAgent(name="RandomWhite", color="W")
     black_agent = RandomAgent(name="RandomBlack", color="B")
 
     print("Starting game...\n")

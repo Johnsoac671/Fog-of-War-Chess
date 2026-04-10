@@ -709,3 +709,19 @@ class Chess:
             self.castling_rights.copy(),
             self.has_en_passant, self.en_passant.copy(),
             self.ply_count_without_adv, self.half_move_count, self.turn)
+    
+    def copy_into(self, target):
+        np.copyto(target.bitboards, self.bitboards)
+        np.copyto(target.piece_lookup, self.piece_lookup)
+        np.copyto(target.castling_rights, self.castling_rights)
+        target.en_passant[:] = self.en_passant
+        
+        target.has_en_passant = self.has_en_passant
+        target.ply_count_without_adv = self.ply_count_without_adv
+        target.half_move_count = self.half_move_count
+        target.turn = self.turn
+        target.has_legal_moves = self.has_legal_moves
+        target.any_checkers = self.any_checkers
+        
+        target.legal_move_cache = None
+        target.promotion_move_cache = None

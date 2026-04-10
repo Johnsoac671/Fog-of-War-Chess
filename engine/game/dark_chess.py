@@ -44,6 +44,11 @@ class Game():
         
         return clone
 
+    def copy_into(self, target):
+        self.board.copy_into(target.board)
+        target.variant = self.variant
+        target.current_player = self.current_player
+
     def get_result(self):
         result = self.board.game_result() 
         
