@@ -1,5 +1,9 @@
+import time
+from datetime import timedelta
+
 from engine.game.dark_chess import Game
 from engine.agents.random_agents import RandomAgent, EagerRandomAgent
+from engine.agents.monte_carlo_agent import MonteCarloAgent
 
 
 def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
@@ -26,14 +30,26 @@ def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
 
 def run_matches(num_games: int = 10) -> None:
     white_agent = EagerRandomAgent(name="RandomWhite", color="W")
-    black_agent = RandomAgent(name="RandomBlack", color="B")
+    black_agent = MonteCarloAgent(name="RandomBlack", color="B")
 
     results = {"W": 0, "B": 0, "D": 0}
 
+    start = time.time()
+    
     for i in range(num_games):
         winner = play_game(white_agent, black_agent)
         results[winner] += 1
-        print(f"Game {i + 1}: Winner = {winner}")
+        
+        elapsed = time.time() - start
+        avg = elapsed / (i + 1)
+        remaining = avg * (num_games - (i + 1))
+        
+        print(
+            f"Game {i + 1}: Winner = {winner} | "
+            f"Elapsed: { str(timedelta(seconds=int(elapsed)))} | "
+            f"ETA: {str(timedelta(seconds=int(remaining)))} | "
+            f"{i + 1}/{num_games}"
+        )
 
     print("\nFinal Results:")
     for key, value in results.items():
