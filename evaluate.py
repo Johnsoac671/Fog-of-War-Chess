@@ -30,7 +30,8 @@ def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
 
 def run_matches(num_games: int = 10) -> None:
     white_agent = EagerRandomAgent(name="RandomWhite", color="W")
-    black_agent = MonteCarloAgent(name="RandomBlack", color="B")
+    black_agent = RandomAgent(name="RandomBlack", color="B")
+    # black_agent = MonteCarloAgent(name="RandomBlack", color="B")
 
     results = {"W": 0, "B": 0, "D": 0}
 

@@ -9,6 +9,7 @@ class Determinizer(ABC):
 
     @abstractmethod
     def determinize_board(self, game: Game) -> Game:
+        # game with fog -> game without fog
         pass
 
 import random

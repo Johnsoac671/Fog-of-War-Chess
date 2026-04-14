@@ -123,6 +123,8 @@ class Chess:
         """
         
         # white king captured
+        # note that bitboards[1, 5] is a uint64 where \
+        # a set bit means the king is there
         if self.bitboards[1, 5] == 0:
             return -1
         # black king captured
@@ -223,42 +225,12 @@ class Chess:
         """
         
         enemy_turn = inv_color(self.turn)
+        target_row, target_col = i + dx, j + dy
+        f_to = flat(target_row, target_col, self.dims)
         piece_at = self.piece_at(i, j, self.turn)
-        piece_to = self.piece_at(i + dx, j + dy, inv_color(self.turn))
         self.move_pieces(piece_at, (i, j), (i + dx, j + dy), promotion)
-        # If this was castling...
-        if piece_at == 5 and abs(dy) == 2:
-            side = dy > 0
-            rook_square_y_from = 0 if side == 0 else self.dims[1] - 1
-            rook_square_y_to = (j + dy + 1) if side == 0 else (j + dy - 1)
-            self.move_pieces(3, (i, rook_square_y_from), (i, rook_square_y_to))
 
-        # If this voids castling... (Moves king)
-        if piece_at == 5:
-            self.castling_rights[self.turn] = 0
-
-        # Moves own rook
-        if piece_at == 3:
-            side = 0 if j == 0 else 1
-            back_rank = 0 if self.turn == 0 else self.dims[0] - 1
-            if i == back_rank and (j == 0 or j == self.dims[1] - 1):
-                self.castling_rights[self.turn, side] = 0
-            
-        # Captures enemy rook
-        # (is caught by other checks, but need to do this explicitly for FEN support)
-        if piece_to == 3:
-            side = 0 if (j + dy) == 0 else 1
-            back_rank = 0 if enemy_turn == 0 else self.dims[0] - 1
-            if (i + dx) == back_rank and ((j + dy) == 0 or (j + dy) == self.dims[1] - 1):
-                self.castling_rights[enemy_turn, side] = 0
-
-        # A capture (if there's someone already on the square)
-        if piece_at == 0 and self.has_en_passant and self.en_passant[0] == i + dx and self.en_passant[1] == j + dy:
-            f_to = flat(i, j + dy, self.dims)
-        else:
-            f_to = flat(i + dx, j + dy, self.dims)
-
-        # allow the king to be unset
+        # allow the king to be taken
         for piece_type in range(6):
             self.bitboards[enemy_turn, piece_type] = unset_bit(self.bitboards[enemy_turn, piece_type], f_to)
 
@@ -273,14 +245,6 @@ class Chess:
         self.half_move_count += 1
 
         self.piece_lookup[enemy_turn, target[0], target[1]] = -1
-
-        # If this enables en-passant
-        if piece_at == 0 and abs(dx) == 2:
-            row_inc = 1 if dx > 0 else -1
-            self.has_en_passant = True
-            self.en_passant = np.array([i + row_inc, j], dtype=np.int8)
-        else:
-            self.reset_en_passant()
         self.turn = enemy_turn
 
         # Empty the cache after making a move
@@ -382,7 +346,7 @@ class Chess:
             return res, 0
         return self.piece_at(i, j, 1), 1
 
-    def can_castle(self, side: bool, all_pieces: np.uint64, king_danger_squares: np.uint64):
+    def can_castle(self, side: bool, all_pieces: np.uint64):
         """Calculates if castling is legal to the current side. If castling is disabled for the given variant, castling rights are pre-set to 0.
 
         :param bool side: Side to consider
@@ -392,10 +356,11 @@ class Chess:
         """
         j = 0 if side == 0 else self.dims[1] - 1
         back_rank = 0 if self.turn == 0 else self.dims[0] - 1
-        # Må faktisk ha et tårn der
+        # there must be a rook there
         if not has_bit(self.bitboards[self.turn, 3], flat(back_rank, j, self.dims)):
             return False
-        return self.castling_rights[self.turn, side] and (self.CASTLING_ATTACK_MASKS[self.turn, side] & king_danger_squares) == 0 and (self.CASTLING_EMPTY_MASKS[self.turn, side] & all_pieces) == 0
+        return self.castling_rights[self.turn, side] \
+            and (self.CASTLING_EMPTY_MASKS[self.turn, side] & all_pieces) == 0
 
     def single_to_bitboard(self, i, j):
         """Creates an empty bitboard with the bit at (i, j) set."""
@@ -537,6 +502,8 @@ class Chess:
         Finds all legal moves. 
         They are given as a matrix of bitboards, where the bitboard at (i, j) designates the legal moves that can be made from that position.
         This is returned along with an a similar matrix designating the available promotions.
+        
+        NO EN-PASSANT / DOUBLE PAWN / CASTLING
         """
         if self.legal_move_cache is not None:
             return self.legal_move_cache, self.promotion_move_cache
@@ -546,89 +513,6 @@ class Chess:
         enemy_pieces = all_pieces & ~my_pieces
         
         # dont care about checkers or pins
-        '''
-        my_pawn_row_inc = -1 if self.turn == 1 else 1
-        opp_pawn_row_inc = my_pawn_row_inc * -1
-        # Get squares that are dangerous for the king
-        king_danger_squares = self.get_attacked_squares(inv_color(self.turn), True)
-        king_pos = self.find_king(self.turn)
-        # i, j is the position of our king...
-        i, j = king_pos
-        king_moves = (self.KING_MOVES[i, j] & ~king_danger_squares) & ~my_pieces
-
-        checkers = self.find_checkers(all_pieces, enemy_turn, king_pos)
-        more_than_one_checker = more_than_one_bit_set(checkers)
-        if more_than_one_checker:
-            # In double-check, only legal thing to do is move the king.
-            # This means that all the legal moves consist of moves that move the king.
-            legal_moves = np.zeros(self.dims, dtype=np.uint64)
-            legal_moves[i, j] = king_moves
-            self.has_legal_moves = np.any(legal_moves > 0)
-            self.any_checkers = checkers != 0
-            self.legal_move_cache = legal_moves
-            self.promotion_move_cache = np.zeros_like(legal_moves)
-            return legal_moves, np.zeros_like(legal_moves)
-
-        # If we are in check, that limits what we can do.
-        # We either have to capture the piece in check, or block it.
-        # Need to create two masks for this.
-
-        # If not in check, these masks don't limit anything.
-        # Need to have two different masks due to en-passant checks.
-        # In that (and only that) case, you can capture a piece by moving to an empty tile.
-        # Meaning that you capture it by moving to someplace it isn't, thus requiring two different masks!
-        capture_mask = np.iinfo(np.uint64).max
-        en_passant_capture_mask = B_0
-        push_mask = np.iinfo(np.uint64).max
-        # Only a single checker!
-        if checkers != 0 and not more_than_one_checker:
-            # Can capture the checker...
-            capture_mask = checkers
-
-            i, j = self.bit_pos(checkers)
-            piece_at = self.piece_at(i, j, enemy_turn)
-            # Edge-case: checker is a pawn that was just moved two squares forward, opens up for en-passant
-            # Need to add the en-passant square as a possible one to be attacked as well.
-            if piece_at == 0 and self.has_en_passant:
-                en_passant_capture_mask |= self.single_to_bitboard(self.en_passant[0], self.en_passant[1])
-            # If a knight is giving check, it can't be blocked
-            if piece_at == 0 or piece_at == 1:
-                push_mask = B_0
-            else:
-
-                # Find the straight-line moves from the king and from the checker, and see where they intersect.
-
-                # TODO: this now also considers squares "behind" the king, which is not right.
-                # Like this: ..R..k..x, in this case, the x would also be a valid intersection, and so would be a valid "block".
-                # Not good.
-
-                # ACTUALLY, no it wouldn't! As the king counts as a blocker for the magic :)
-                intersections = B_0
-                if piece_at == 2:
-                    intersections |= self.diagonal_move_magic(all_pieces, i, j) & self.diagonal_move_magic(all_pieces, king_pos[0], king_pos[1])
-                if piece_at == 3:
-                    intersections |= self.straight_move_magic(all_pieces, i, j) & self.straight_move_magic(all_pieces, king_pos[0], king_pos[1])
-
-                # Stop pinning diagonally and straight at the same time...
-                if piece_at == 4:
-                    if king_pos[0] == i or king_pos[1] == j:
-                        intersections |= self.straight_move_magic(all_pieces, i, j) & self.straight_move_magic(all_pieces, king_pos[0], king_pos[1])
-                    else:
-                        intersections |= self.diagonal_move_magic(all_pieces, i, j) & self.diagonal_move_magic(all_pieces, king_pos[0], king_pos[1])
-
-                # Remove the actual pieces from the mix, leaving the ray between the checker and the king
-                intersections &= (~self.bitboards[self.turn, 5] | ~checkers)
-                push_mask = intersections
-
-            # Meaning, any piece that has to move, either has to go to the field indicated by push_mask or capture_mask
-
-        # Pinned pieces
-        pin_masks = self.find_pinned_pieces(all_pieces, enemy_pieces, enemy_turn, king_pos)
-        # Sweet! Now any piece that falls in this pinned_check_ray has to move only within that.
-
-        en_passant_moves = self.find_and_validate_en_passant_moves(all_pieces, opp_pawn_row_inc, enemy_turn, king_pos)
-        
-        '''
 
         legal_moves = np.zeros(self.dims, dtype=np.uint64)
         # Now calculate legal moves from position (i, j)
@@ -643,17 +527,10 @@ class Chess:
             # f = flat(i, j, self.dims)
             piece_at = self.piece_at(i, j, self.turn)
             if piece_at == 0:
-                # Can either attack an enemy square, or the en-passant square
-                # TODO: fix en-passant
-                # moves_to_make |= self.PAWN_ATTACKS[self.turn, i, j] & (enemy_pieces | en_passant_moves)
-                moves_to_make |= self.PAWN_ATTACKS[self.turn, i, j] & (enemy_pieces)
+                moves_to_make |= (self.PAWN_ATTACKS[self.turn, i, j] & enemy_pieces)
                 # Pushing pawns one step, if there are no pieces in the way
                 single_pawn_moves = (self.PAWN_MOVES_SINGLE[self.turn, i, j] & ~all_pieces)
                 moves_to_make |= single_pawn_moves
-                # If a pawn can't be pushed one square forward, it is blocked from pushing two aswell
-                if single_pawn_moves != 0:
-                    moves_to_make |= (self.PAWN_MOVES_DOUBLE[self.turn, i, j] & ~all_pieces)
-
                 promotions[i, j] |= (moves_to_make & self.PROMOTION_MASKS[self.turn])
 
             if piece_at == 1:
@@ -665,21 +542,6 @@ class Chess:
             if piece_at == 5:
                 # updated for dark chess
                 moves_to_make |= (self.KING_MOVES[i, j] & ~my_pieces)
-                # Castle left
-                # TODO: castling
-                # if self.can_castle(0, all_pieces, king_danger_squares):
-                #     moves_to_make |= self.single_to_bitboard(i, j - 2)
-                # if self.can_castle(1, all_pieces, king_danger_squares):
-                #     moves_to_make |= self.single_to_bitboard(i, j + 2)
-            '''
-            # Remove moves that don't deal with check if necessary
-            if piece_at != 5 and piece_at != 0:
-                moves_to_make &= (capture_mask | push_mask)
-            if piece_at == 0:
-                moves_to_make &= (capture_mask | en_passant_capture_mask | push_mask)
-            # If it's pinned, restrict the moves to the pinned ray
-            moves_to_make &= pin_masks[i, j]
-            '''
             legal_moves[i, j] = moves_to_make
 
         # Now legal_moves is a (m x n) matrix with bitboards designating the legal moves from the field (i, j)
