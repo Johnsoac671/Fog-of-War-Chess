@@ -18,6 +18,23 @@ from engine.determinization.determinizer import Determinizer
 from engine.game.dark_chess import Game
 from engine.game.minichess.chess.fastchess_utils import B_1, true_bits, unflat
 
+class IgnoranceIsBlissDeterminizer(Determinizer):
+    """
+    Just assumes all unseen spaces are empty
+    """
+    def __init__(self):
+        self.state = Game()
+        
+    def determinize_board(self, game: Game, color: str) -> Game:
+        visible_mask = game.get_board_state()
+        hallucination = game.copy()
+        enemy_idx = 0 if color == "W" else 1 # 0 is black
+        
+        for piece_type in range(6):
+            hallucination.board.bitboards[enemy_idx, piece_type] &= visible_mask
+            
+        return hallucination
+
 class BadDeterminizer(Determinizer):
     """
     Just assumes all unseen spaces are empty (except for the opposing king, who is assumed to be on a random unseen space if not visible)
