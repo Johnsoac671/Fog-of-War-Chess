@@ -1,13 +1,13 @@
 from engine.game.dark_chess import Game
 from engine.agents.random_agents import RandomAgent
-from engine.agents.monte_carlo_agent import MonteCarloAgent
+from engine.agents.monte_carlo_agent import MonteCarloAgent, MonteCarloTreeSearchAgent
 
 
 def main() -> None:
     state = Game()
 
-    white_agent = MonteCarloAgent(name="RandomWhite", color="W")
-    black_agent = RandomAgent(name="RandomBlack", color="B")
+    white_agent = MonteCarloAgent(name="MonteCarlo", color="W")
+    black_agent = MonteCarloTreeSearchAgent(name="MonteCarloTreeSearch", color="B")
 
     print("Starting game...\n")
     state.visualize()

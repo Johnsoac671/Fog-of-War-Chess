@@ -1,8 +1,9 @@
 import numpy as np
+import random
 from abc import ABC, abstractmethod
 
 from engine.game.dark_chess import Game
-from engine.game.minichess.chess.fastchess_utils import true_bits, unflat
+from engine.game.minichess.chess.fastchess_utils import true_bits, unflat, B_1
 
 
 class Determinizer(ABC):
@@ -11,12 +12,6 @@ class Determinizer(ABC):
     def determinize_board(self, game: Game) -> Game:
         # game with fog -> game without fog
         pass
-
-import random
-import numpy as np
-from engine.determinization.determinizer import Determinizer
-from engine.game.dark_chess import Game
-from engine.game.minichess.chess.fastchess_utils import B_1, true_bits, unflat
 
 class IgnoranceIsBlissDeterminizer(Determinizer):
     """
