@@ -94,6 +94,7 @@ class MonteCarloTreeSearchAgent(Agent):
         self.exploration_constant = exploration_constant
         self.determinizer: Determinizer = RandomDeterminizer()
         self.max_simulation_length = 200
+        self.sim_game = Game()
     
     def choose_move(self, game: Game):
         moves = game.get_legal_moves()
@@ -126,54 +127,52 @@ class MonteCarloTreeSearchAgent(Agent):
             
             if not legal_moves:
                 break
-                t
+                
             untried_moves = [m for m in legal_moves if m not in current.children]
             
             if untried_moves:
                 move = random.choice(untried_moves)
+                moving_player = game.current_player
                 game.take_action(move)
                 
-                child = MCTSNode(parent=current, move=move, color=game.current_player)
+                child = MCTSNode(parent=current, move=move, color=moving_player)
                 current.children[move] = child
                 return child
             else:
                 legal_children = [current.children[m] for m in legal_moves if m in current.children]
                 
                 if not legal_children:
-                    break  
+                    break
                     
                 current = max(legal_children, key=lambda c: c.uct_value(self.exploration_constant))
                 game.take_action(current.move)
-        
+    
         return current
     
     def simulate_game(self, game: Game) -> str:
-        sim_game = game.copy()
+        game.copy_into(self.sim_game)
         
         for _ in range(self.max_simulation_length):
-            result = sim_game.get_result()
+            result = self.sim_game.get_result()
             
             if result is not None:
                 return result
             
-            moves = sim_game.get_legal_moves()
+            moves = self.sim_game.get_legal_moves()
             
             if not moves:
                 return "D"
             
-            sim_game.take_action(random.choice(moves))
+            self.sim_game.take_action(random.choice(moves))
         
         return "D"
     
     def backpropagate(self, node: MCTSNode, reward: str) -> None:
         current = node
-        
+
         while current is not None:
             current.visits += 1
-            
-            prev_player = "W" if current.color == "B" else "B"
-            
-            current.value += self.score_outcome(reward, prev_player)
+            current.value += self.score_outcome(reward, current.color)
             current = current.parent
     
     def score_outcome(self, result: str, node_color: str) -> float:

@@ -6,7 +6,7 @@ from engine.agents.monte_carlo_agent import MonteCarloAgent, MonteCarloTreeSearc
 def main() -> None:
     state = Game()
 
-    white_agent = MonteCarloAgent(name="MonteCarlo", color="W")
+    white_agent = RandomAgent(name="Random", color="W")
     black_agent = MonteCarloTreeSearchAgent(name="MonteCarloTreeSearch", color="B")
 
     print("Starting game...\n")

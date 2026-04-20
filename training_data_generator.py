@@ -38,6 +38,7 @@ class MonteCarloTreeSearchAgent(Agent):
         self.exploration_constant = exploration_constant
         self.determinizer: Determinizer = RandomDeterminizer()
         self.max_simulation_length = 200
+        self.sim_game = Game()
         self.memory = []
     
     def choose_move(self, game: Game):
@@ -108,20 +109,20 @@ class MonteCarloTreeSearchAgent(Agent):
     
     
     def simulate_game(self, game: Game) -> str:
-        sim_game = game.copy()
+        game.copy_into(self.sim_game)
         
         for _ in range(self.max_simulation_length):
-            result = sim_game.get_result()
+            result = self.sim_game.get_result()
             
             if result is not None:
                 return result
             
-            moves = sim_game.get_legal_moves()
+            moves = self.sim_game.get_legal_moves()
             
             if not moves:
                 return "D"
             
-            sim_game.take_action(random.choice(moves))
+            self.sim_game.take_action(random.choice(moves))
         
         return "D"
     
@@ -149,9 +150,10 @@ def generate_training_data(num_games: int):
     
     results = {"W": 0, "B": 0, "D": 0}
     start_time = time.time()
-    
+    game = Game()
     for i in range(num_games):
-        winner = play_game(white_agent, black_agent, max_turns=100)
+        game.reset()
+        winner = play_game(white_agent, black_agent, 100, game)
         results[winner] += 1
         
         elapsed = time.time() - start_time
@@ -170,8 +172,7 @@ def generate_training_data(num_games: int):
         print(f"{key}: {value}")
 
 
-def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
-    state = Game()
+def play_game(white_agent, black_agent, max_turns, state) -> str:
     turns = 0
 
     white_agent.memory = []

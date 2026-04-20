@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from engine.game.dark_chess import Game
 from engine.agents.random_agents import RandomAgent, EagerRandomAgent
-from engine.agents.monte_carlo_agent import MonteCarloAgent
+from engine.agents.monte_carlo_agent import MonteCarloAgent, MonteCarloTreeSearchAgent
 from engine.agents.alpha_beta_agent import AlphaBetaAgent
 
 def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
@@ -30,8 +30,8 @@ def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
 
 def run_matches(num_games: int = 10) -> None:
     # white_agent = EagerRandomAgent(name="RandomWhite", color="W")
-    white_agent = MonteCarloAgent(name="RandomWhite", color="W")
-    black_agent = AlphaBetaAgent(name="RandomBlack", color="B")
+    white_agent = MonteCarloTreeSearchAgent(name="MCTS", color="W")
+    black_agent = RandomAgent(name="RandomBlack", color="B")
     # black_agent = RandomAgent(name="RandomBlack", color="B")
     # black_agent = MonteCarloAgent(name="RandomBlack", color="B")
 
