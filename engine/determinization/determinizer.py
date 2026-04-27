@@ -1,15 +1,18 @@
 import numpy as np
 import random
 from abc import ABC, abstractmethod
+import torch
 
 from engine.game.dark_chess import Game
-from engine.game.minichess.chess.fastchess_utils import true_bits, unflat, B_1
+from engine.game.minichess.chess.fastchess_utils import true_bits, unflat, B_1, flat, has_bit
+from engine.util.util import board_to_numpy
+from network_training import BeliefNetwork
 
 
 class Determinizer(ABC):
 
     @abstractmethod
-    def determinize_board(self, game: Game) -> Game:
+    def determinize_board(self, game: Game, color: str) -> Game:
         # game with fog -> game without fog
         pass
 
@@ -77,6 +80,17 @@ class BadDeterminizer(Determinizer):
         
         return self.state
 
+class CheatingDeterminizer(Determinizer):
+    '''
+    Just reveals all squares, basically makes the game regular chess
+    '''
+    def __init__(self):
+        self.state = Game()
+    
+    def determinize_board(self, game: Game, color: str= None) -> Game:
+        game.copy_into(self.state)
+        return self.state
+
 
 class RandomDeterminizer(Determinizer):
     """
@@ -87,7 +101,7 @@ class RandomDeterminizer(Determinizer):
     def __init__(self):
         self.state = Game()
     
-    def determinize_board(self, game: Game) -> Game:
+    def determinize_board(self, game: Game, color: str) -> Game:
         game.copy_into(self.state)
         board = self.state.board
         dims = board.dims
