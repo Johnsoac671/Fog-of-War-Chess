@@ -1,196 +1,263 @@
 import random
 import math
 import torch
+import numpy as np
+import multiprocessing as mp
 
 from engine.game.dark_chess import Game
 from engine.agents.agent import Agent
 from engine.determinization.determinizer import Determinizer, RandomDeterminizer
+from engine.util.util import board_to_numpy
 
 
 class MCTSNode:
-    def __init__(self, game: Game, parent=None, move=None, color: str = "W"):
-        self.game = game.copy()
+    def __init__(self, parent=None, move=None, color: str = "W", prior: float = 0.0):
         self.parent = parent
         self.move = move
         self.color = color
         self.children = {}
         self.visits = 0
         self.value = 0.0
-        self.untried_moves = game.get_legal_moves()
+        self.prior = prior
     
-    
-    def uct_value(self, exploration_constant: float = math.sqrt(2)) -> float:
-        if self.visits == 0:
-            return float('inf')
+    def puct_value(self, c_puct: float = 1.5) -> float:
+        q_value = (1.0 - (self.value / self.visits)) if self.visits > 0 else 0.5
         
-        exploitation = self.value / self.visits
         parent_visits = self.parent.visits if self.parent else 1
-        exploration = exploration_constant * math.sqrt(math.log(parent_visits) / self.visits)
-        
-        return exploitation + exploration
-    
-    
-    def best_child(self, exploration_constant: float = math.sqrt(2)) -> 'MCTSNode':
-        return max(self.children.values(), key=lambda child: child.uct_value(exploration_constant))
-    
-    
-    def is_fully_expanded(self) -> bool:
-        return len(self.untried_moves) == 0
-    
-    
-    def is_terminal(self) -> bool:
-        return self.game.get_result() is not None
-
+        u_value = c_puct * self.prior * math.sqrt(parent_visits) / (1 + self.visits)
+        return q_value + u_value
 
 
 class NeuralMCTSAgent(Agent):
-    def __init__(self, name: str, color: str, iterations: int = 2000, exploration_constant: float = math.sqrt(2)):
+    def __init__(self, name: str, color: str, network, iterations: int = 300, exploration_constant: float = 1.5, determinizer=RandomDeterminizer()):
         self.name = name
         self.color = color
         self.iterations = iterations
         self.exploration_constant = exploration_constant
-        self.determinizer: Determinizer = RandomDeterminizer()
-        self.max_simulation_length = 200
-        
-        self.value_network = None
-    
-    def choose_move(self, game: Game):
+        self.determinizer: Determinizer = determinizer
+        self.value_network = network 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.memory = []
+
+    def get_move_index(self, move):
+        (i, j), (dx, dy), _ = move
+        return (i * 5 + j) * 25 + ((i + dx) * 5 + (j + dy))
+      
+
+    def choose_move(self, game: Game, temperature: float = 0.0):
         moves = game.get_legal_moves()
         
-        if len(moves) == 1:
+        if len(moves) == 1: 
             return moves[0]
             
         root = MCTSNode(parent=None, move=None, color=game.current_player)
-        
         self.value_network.eval()
         
+        board_numpy = board_to_numpy(game)
+        board_tensor = torch.tensor(board_numpy, dtype=torch.float32).unsqueeze(0).to(self.device)
+        
+        with torch.inference_mode():
+            policy_odds, _ = self.value_network(board_tensor)
+        
+        policy_odds = policy_odds[0].cpu().numpy()
+        legal_indices = [self.get_move_index(m) for m in moves]
+        
+        max_precentage_found = float('-inf')
+        for idx in legal_indices:
+            if policy_odds[idx] > max_precentage_found: max_precentage_found = policy_odds[idx]
+                
+        sum_exp = 0.0
+        move_probs = {}
+        for move, idx in zip(moves, legal_indices):
+            exp_val = math.exp(policy_odds[idx] - max_precentage_found)
+            move_probs[move] = exp_val
+            sum_exp += exp_val
+            
+        for move in moves:
+            prob = move_probs[move] / sum_exp if sum_exp > 0 else 1.0 / len(moves)
+            root.children[move] = MCTSNode(parent=root, move=move, color=game.current_player, prior=prob)
+
         for _ in range(self.iterations):
-            det_game = self.determinizer.determinize_board(game)
+            det_game = self.determinizer.determinize_board(game, self.color)
+            leaf, value = self.select_and_evaluate(root, det_game)
+            self.backpropagate(leaf, value)
             
-            leaf = self.select_and_expand(root, det_game)
-            
-            result = det_game.get_result()
-            
-            if result is not None:
-                prev_player = "W" if leaf.color == "B" else "B"
-                reward = self.score_outcome(result, prev_player)
-                
-            else:
-                board_tensor = self.convert_to_tensor(det_game)
-                
-                with torch.no_grad():
-                    nn_value = self.value_network(board_tensor).item()
-                
-                reward = 1.0 - nn_value 
-            
-            self.backpropagate(leaf, reward)
-            
-        if not root.children:
+        if not root.children: 
             return random.choice(moves)
             
-        best_move = max(root.children.values(), key=lambda child: child.visits).move
+        if temperature > 0.0:
+            visits = [child.visits for child in root.children.values()]
+            moves_list = list(root.children.values())
+            total_visits = sum(visits)
+            probs = [v / total_visits for v in visits]
+            chosen_child = np.random.choice(moves_list, p=probs)
+            return chosen_child.move
         
-        return best_move
+        else:
+            return max(root.children.values(), key=lambda child: child.visits).move
     
     
-    def select_and_expand(self, node: MCTSNode, game: Game) -> MCTSNode:
+    def select_and_evaluate(self, node: MCTSNode, game: Game):
         current = node
+        while current.children and game.get_result() is None:
+            current = max(current.children.values(), key=lambda c: c.puct_value(self.exploration_constant))
+            game.take_action(current.move)
+            
+        result = game.get_result()
+        if result is not None:
+            prev_player = "W" if game.current_player == "B" else "B"
+            reward = 1.0 if result == prev_player else (0.5 if result == "D" else 0.0)
+            return current, 1.0 - reward 
+            
+        board_numpy = board_to_numpy(game)
+        board_tensor = torch.tensor(board_numpy, dtype=torch.float32).unsqueeze(0).to(self.device)
         
-        while game.get_result() is None:
-            legal_moves = game.get_legal_moves()
+        with torch.inference_mode():
+            policy_odds, nn_value = self.value_network(board_tensor)
             
-            if not legal_moves:
-                break
-                t
-            untried_moves = [m for m in legal_moves if m not in current.children]
-            
-            if untried_moves:
-                move = random.choice(untried_moves)
-                game.take_action(move)
+        value = nn_value.item()
+        policy_odds = policy_odds[0].cpu().numpy()
+        legal_moves = game.get_legal_moves()
+        
+        move_probs = {}
+        max_precentage_found = float('-inf')
+        legal_indices = [self.get_move_index(m) for m in legal_moves]
+        for idx in legal_indices:
+            if policy_odds[idx] > max_precentage_found: max_precentage_found = policy_odds[idx]
                 
-                child = MCTSNode(parent=current, move=move, color=game.current_player)
-                current.children[move] = child
-                return child
-            else:
-                legal_children = [current.children[m] for m in legal_moves if m in current.children]
-                
-                if not legal_children:
-                    break  
-                    
-                current = max(legal_children, key=lambda c: c.uct_value(self.exploration_constant))
-                game.take_action(current.move)
-        
-        return current
+        sum_exp = 0.0
+        for move, idx in zip(legal_moves, legal_indices):
+            exp_val = math.exp(policy_odds[idx] - max_precentage_found)
+            move_probs[move] = exp_val
+            sum_exp += exp_val
+            
+        for move in legal_moves:
+            prob = move_probs[move] / sum_exp if sum_exp > 0 else 1.0 / len(legal_moves)
+            current.children[move] = MCTSNode(parent=current, move=move, color=game.current_player, prior=prob)
+            
+        return current, value
     
     
-    def simulate_game(self, game: Game) -> str:
-        sim_game = game.copy()
-        
-        for _ in range(self.max_simulation_length):
-            result = sim_game.get_result()
-            
-            if result is not None:
-                return result
-            
-            moves = sim_game.get_legal_moves()
-            
-            if not moves:
-                return "D"
-            
-            sim_game.take_action(random.choice(moves))
-        
-        return "D"
-    
-    
-    def backpropagate(self, node: MCTSNode, reward: str) -> None:
-        current = node
+    def backpropagate(self, node: MCTSNode, value: float) -> None:
+        current, current_value = node, value
         
         while current is not None:
             current.visits += 1
-            
-            prev_player = "W" if current.color == "B" else "B"
-            
-            current.value += self.score_outcome(reward, prev_player)
+            current.value += current_value
             current = current.parent
-    
-    
-    def score_outcome(self, result: str, node_color: str) -> float:
-        if result == node_color:
-            return 1.0
-        
-        if result == "D":
-            return 0.5
-        
-        return 0.0
-    
+            current_value = 1.0 - current_value
 
-    def convert_to_tensor(self, game: Game):
-        board = game.board
-        dims = board.dims
-        tensor = torch.zeros(1, 14, dims[0], dims[1])
+
+# AI generated class; setup to make generating training data faster
+class RemoteNeuralMCTSAgent(Agent):
+    def __init__(self, name: str, color: str, worker_id: int, req_queue: mp.Queue, resp_pipe, iterations: int = 300, exploration_constant: float = 1.5, determinizer=RandomDeterminizer):
+        self.name = name
+        self.color = color
+        self.worker_id = worker_id
+        self.req_queue = req_queue
+        self.resp_pipe = resp_pipe
+        self.iterations = iterations
+        self.exploration_constant = exploration_constant
+        self.determinizer: Determinizer = determinizer()
+        self.memory = []
+
+    def get_move_index(self, move):
+        (i, j), (dx, dy), promotion = move
+        return (i * 5 + j) * 25 + ((i + dx) * 5 + (j + dy))
+
+    def choose_move(self, game: Game, temperature):
+        moves = game.get_legal_moves()
+        if len(moves) == 1: return moves[0]
+            
+        root = MCTSNode(parent=None, move=None, color=game.current_player)
         
-        piece_map = {'P': 0, 'N': 1, 'B': 2, 'R': 3, 'Q': 4, 'K': 5}
+        board_array = np.expand_dims(board_to_numpy(game), axis=0)
+        self.req_queue.put((self.worker_id, board_array))
+        policy_logits, _ = self.resp_pipe.recv()
         
-        for row in range(dims[0]):
-            for col in range(dims[1]):
-                piece = board[row][col]
+        legal_indices = [self.get_move_index(m) for m in moves]
+        max_logit = float('-inf')
+        for idx in legal_indices:
+            if policy_logits[idx] > max_logit: max_logit = policy_logits[idx]
                 
-                if piece and piece != '.':
-                    piece_type = piece.upper()
-                    if piece_type in piece_map:
-                        layer = piece_map[piece_type]
-                        
-                        if piece.isupper(): 
-                            tensor[0, layer, row, col] = 1
-                        else: 
-                            tensor[0, layer + 6, row, col] = 1
+        sum_exp = 0.0
+        move_probs = {}
+        for move, idx in zip(moves, legal_indices):
+            exp_val = math.exp(policy_logits[idx] - max_logit)
+            move_probs[move] = exp_val
+            sum_exp += exp_val
+            
+        for move in moves:
+            prob = move_probs[move] / sum_exp if sum_exp > 0 else 1.0 / len(moves)
+            root.children[move] = MCTSNode(parent=root, move=move, color=game.current_player, prior=prob)
+
+        for _ in range(self.iterations):
+            det_game = self.determinizer.determinize_board(game, self.color)
+            leaf, value = self.select_and_evaluate(root, det_game)
+            self.backpropagate(leaf, value)
+            
+        if not root.children: return random.choice(moves)
+            
+        total_visits = sum(child.visits for child in root.children.values())
+        policy_vector = np.zeros(625, dtype=np.float32)
+        for move, child in root.children.items():
+            policy_vector[self.get_move_index(move)] = child.visits / total_visits
+            
+        self.memory.append({
+            "board_state": board_to_numpy(game).tolist(),
+            "policy": policy_vector.tolist(),
+            "player_to_move": game.current_player
+        })
         
-        for row in range(dims[0]):
-            for col in range(dims[1]):
-                if game.is_visible(row, col, self.color):
-                    tensor[0, 12, row, col] = 1
+        if temperature > 0.0:
+            visits = [child.visits for child in root.children.values()]
+            moves_list = list(root.children.values())
+            probs = [v / total_visits for v in visits]
+            chosen_child = np.random.choice(moves_list, p=probs)
+            return chosen_child.move
+        else:
+            return max(root.children.values(), key=lambda child: child.visits).move
+    
+    def select_and_evaluate(self, node: MCTSNode, game: Game):
+        current = node
+        while current.children and game.get_result() is None:
+            current = max(current.children.values(), key=lambda c: c.puct_value(self.exploration_constant))
+            game.take_action(current.move)
+            
+        result = game.get_result()
+        if result is not None:
+            prev_player = "W" if game.current_player == "B" else "B"
+            reward = 1.0 if result == prev_player else (0.5 if result == "D" else 0.0)
+            return current, 1.0 - reward 
+            
+        board_array = np.expand_dims(board_to_numpy(game), axis=0)
+        self.req_queue.put((self.worker_id, board_array))
+        policy_logits, value = self.resp_pipe.recv()
         
-        if game.current_player == self.color:
-            tensor[0, 13, :, :] = 1
+        legal_moves = game.get_legal_moves()
+        move_probs = {}
+        max_logit = float('-inf')
+        legal_indices = [self.get_move_index(m) for m in legal_moves]
         
-        return tensor
+        for idx in legal_indices:
+            if policy_logits[idx] > max_logit: max_logit = policy_logits[idx]
+                
+        sum_exp = 0.0
+        for move, idx in zip(legal_moves, legal_indices):
+            exp_val = math.exp(policy_logits[idx] - max_logit)
+            move_probs[move] = exp_val
+            sum_exp += exp_val
+            
+        for move in legal_moves:
+            prob = move_probs[move] / sum_exp if sum_exp > 0 else 1.0 / len(legal_moves)
+            current.children[move] = MCTSNode(parent=current, move=move, color=game.current_player, prior=prob)
+            
+        return current, value
+    
+    def backpropagate(self, node: MCTSNode, value: float) -> None:
+        current, current_value = node, value
+        while current is not None:
+            current.visits += 1
+            current.value += current_value
+            current = current.parent
+            current_value = 1.0 - current_value

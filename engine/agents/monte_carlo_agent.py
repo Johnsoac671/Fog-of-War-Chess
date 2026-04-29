@@ -7,11 +7,11 @@ from engine.determinization.determinizer import Determinizer, RandomDeterminizer
 
 
 class MonteCarloAgent(Agent):
-    def __init__(self, name: str, color: str, iterations: int = 100):
+    def __init__(self, name: str, color: str, iterations: int = 100, determinizer=RandomDeterminizer()):
         self.name = name
         self.color = color
         self.iterations = iterations
-        self.determinizer: Determinizer = RandomDeterminizer()
+        self.determinizer: Determinizer = determinizer
 
 
     def choose_move(self, game: Game):
@@ -25,7 +25,7 @@ class MonteCarloAgent(Agent):
         sim_game = game.copy()
 
         for _ in range(self.iterations):
-            det_game = self.determinizer.determinize_board(game)
+            det_game = self.determinizer.determinize_board(game, self.color)
 
             for idx, move in enumerate(moves):
                 det_game.copy_into(sim_game)
@@ -87,12 +87,12 @@ class MCTSNode:
 
 
 class MonteCarloTreeSearchAgent(Agent):
-    def __init__(self, name: str, color: str, iterations: int = 2000, exploration_constant: float = math.sqrt(2)):
+    def __init__(self, name: str, color: str, iterations: int = 2000, exploration_constant: float = math.sqrt(2), determinizer=RandomDeterminizer()):
         self.name = name
         self.color = color
         self.iterations = iterations
         self.exploration_constant = exploration_constant
-        self.determinizer: Determinizer = RandomDeterminizer()
+        self.determinizer: Determinizer = determinizer
         self.max_simulation_length = 200
         self.sim_game = Game()
     
@@ -105,7 +105,7 @@ class MonteCarloTreeSearchAgent(Agent):
         root = MCTSNode(parent=None, move=None, color=game.current_player)
         
         for _ in range(self.iterations):
-            det_game = self.determinizer.determinize_board(game)
+            det_game = self.determinizer.determinize_board(game, self.color)
             
             leaf = self.select_and_expand(root, det_game)
             

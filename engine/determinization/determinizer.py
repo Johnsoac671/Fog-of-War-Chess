@@ -1,12 +1,9 @@
 import numpy as np
 import random
 from abc import ABC, abstractmethod
-import torch
 
 from engine.game.dark_chess import Game
-from engine.game.minichess.chess.fastchess_utils import true_bits, unflat, B_1, flat, has_bit
-from engine.util.util import board_to_numpy
-from network_training import BeliefNetwork
+from engine.game.minichess.chess.fastchess_utils import true_bits, unflat, B_1
 
 
 class Determinizer(ABC):
@@ -88,8 +85,7 @@ class CheatingDeterminizer(Determinizer):
         self.state = Game()
     
     def determinize_board(self, game: Game, color: str= None) -> Game:
-        game.copy_into(self.state)
-        return self.state
+        return game.copy()
 
 
 class RandomDeterminizer(Determinizer):
