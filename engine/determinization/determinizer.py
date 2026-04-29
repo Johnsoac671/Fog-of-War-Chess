@@ -9,7 +9,7 @@ from engine.game.minichess.chess.fastchess_utils import true_bits, unflat, B_1
 class Determinizer(ABC):
 
     @abstractmethod
-    def determinize_board(self, game: Game) -> Game:
+    def determinize_board(self, game: Game, color: str) -> Game:
         # game with fog -> game without fog
         pass
 
@@ -77,6 +77,16 @@ class BadDeterminizer(Determinizer):
         
         return self.state
 
+class CheatingDeterminizer(Determinizer):
+    '''
+    Just reveals all squares, basically makes the game regular chess
+    '''
+    def __init__(self):
+        self.state = Game()
+    
+    def determinize_board(self, game: Game, color: str= None) -> Game:
+        return game.copy()
+
 
 class RandomDeterminizer(Determinizer):
     """
@@ -87,7 +97,7 @@ class RandomDeterminizer(Determinizer):
     def __init__(self):
         self.state = Game()
     
-    def determinize_board(self, game: Game) -> Game:
+    def determinize_board(self, game: Game, color: str) -> Game:
         game.copy_into(self.state)
         board = self.state.board
         dims = board.dims

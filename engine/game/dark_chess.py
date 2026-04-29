@@ -37,7 +37,7 @@ class Game():
         return attacking_squares | active_pieces
     
     def copy(self):
-        clone = Game()
+        clone = Game(self.variant)
         clone.board = self.board.copy()
         clone.variant = self.variant
         clone.current_player = self.current_player

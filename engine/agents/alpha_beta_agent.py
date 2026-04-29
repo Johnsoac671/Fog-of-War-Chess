@@ -1,16 +1,18 @@
+import random
+
 from engine.game.dark_chess import Game
 from engine.agents.agent import Agent
 from engine.determinization.determinizer import Determinizer, IgnoranceIsBlissDeterminizer
 
 class AlphaBetaAgent(Agent):
     
-    def __init__(self, name, color, max_depth=4):
+    def __init__(self, name, color, max_depth=4, determinizer=IgnoranceIsBlissDeterminizer()):
         self.name = name
         self.color = color
         self.max_depth = max_depth
         # utility functions
         self.piece_values = {0: 1, 1: 3, 2: 3, 3: 5, 4: 9, 5: 1000}
-        self.determinizer: Determinizer = IgnoranceIsBlissDeterminizer()
+        self.determinizer: Determinizer = determinizer
 
     def choose_move(self, game: Game):
         # assume fog is fully empty
@@ -24,19 +26,23 @@ class AlphaBetaAgent(Agent):
         best_move = None
         alpha = float("-inf")
         beta = float("inf")
+        
         moves = game.get_legal_moves()
         if not moves:
             return None
-        # we manually run the first level of MAX-VALUE to track the actual move
+            
+        random.shuffle(moves) 
+        
         for move in moves:
             result_state = game.copy()
             result_state.take_action(move)
-            # after our move (MAX), we evaluate what the opponent (MIN) will do
+
             value = self.MIN_VALUE(result_state, alpha, beta, 1)
             if value > best_value:
                 best_value = value
                 best_move = move
             alpha = max(alpha, best_value)
+            
         return best_move
 
     # slide 35: returns utility value
