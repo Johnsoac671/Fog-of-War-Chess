@@ -1,18 +1,20 @@
 import time
+import torch
 from datetime import timedelta
 
 from engine.game.dark_chess import Game
 from engine.agents.random_agents import RandomAgent, EagerRandomAgent
 from engine.agents.monte_carlo_agent import MonteCarloAgent, MonteCarloTreeSearchAgent
+from engine.agents.neural_network_agents import NeuralMCTSAgent
 from engine.agents.alpha_beta_agent import AlphaBetaAgent
+from network_training import DarkChessNetwork
 
 def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
     state = Game()
-    # state.visualize(True)
+        
     turns = 0
 
     while not state.get_result():
-        
         if turns > max_turns:
             return "D"
         
@@ -20,23 +22,26 @@ def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
         move = agent.choose_move(state)
 
         if move is None:
-            break
+            return "D"
 
         state.take_action(move)
         turns += 1
+        
     state.visualize(True)
     return state.get_result()
 
-
 def run_matches(num_games: int = 10) -> None:
-    # white_agent = EagerRandomAgent(name="RandomWhite", color="W")
-    white_agent = MonteCarloTreeSearchAgent(name="MCTS", color="W")
-    black_agent = RandomAgent(name="RandomBlack", color="B")
-    # black_agent = RandomAgent(name="RandomBlack", color="B")
-    # black_agent = MonteCarloAgent(name="RandomBlack", color="B")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    networkA = DarkChessNetwork().to(device)
+    networkA.load_state_dict(torch.load("dark_chess.pth", map_location=device))
+    networkA.eval()
+    
+    
+    white_agent = NeuralMCTSAgent(name="Neural", color="W", network=networkA, iterations=300)
+    black_agent = MonteCarloTreeSearchAgent(name="MCTS", color="B", iterations=300)
 
     results = {"W": 0, "B": 0, "D": 0}
-
     start = time.time()
     
     for i in range(num_games):
@@ -49,7 +54,7 @@ def run_matches(num_games: int = 10) -> None:
         
         print(
             f"Game {i + 1}: Winner = {winner} | "
-            f"Elapsed: { str(timedelta(seconds=int(elapsed)))} | "
+            f"Elapsed: {str(timedelta(seconds=int(elapsed)))} | "
             f"ETA: {str(timedelta(seconds=int(remaining)))} | "
             f"{i + 1}/{num_games}"
         )

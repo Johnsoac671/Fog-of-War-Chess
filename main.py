@@ -1,13 +1,25 @@
+import time
+import torch
+from datetime import timedelta
+
 from engine.game.dark_chess import Game
-from engine.agents.random_agents import RandomAgent
+from engine.agents.random_agents import RandomAgent, EagerRandomAgent
 from engine.agents.monte_carlo_agent import MonteCarloAgent, MonteCarloTreeSearchAgent
+from engine.agents.neural_network_agents import NeuralMCTSAgent
+from engine.agents.alpha_beta_agent import AlphaBetaAgent
+from network_training import DarkChessNetwork
 
 
 def main() -> None:
     state = Game()
-
-    white_agent = RandomAgent(name="Random", color="W")
-    black_agent = MonteCarloTreeSearchAgent(name="MonteCarloTreeSearch", color="B")
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    network = DarkChessNetwork().to(device)
+    network.load_state_dict(torch.load("dark_chess.pth", map_location=device))
+    network.eval()
+    
+    white_agent = NeuralMCTSAgent(name="Neural", color="W", network=network, iterations=1000)
+    black_agent = RandomAgent(name="rando", color="B")
 
     print("Starting game...\n")
     state.visualize()
