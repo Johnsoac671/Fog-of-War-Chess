@@ -16,7 +16,7 @@ class RandomAgent(Agent):
         
         return random.choice(moves)
 
-class EagerRandomAgent(Agent):
+class SmartRandomAgent(Agent):
     '''Always takes a move that wins if avaliable, otherwise chooses a move at random from the pool of legal moves'''
     
     def __init__(self, name, color):

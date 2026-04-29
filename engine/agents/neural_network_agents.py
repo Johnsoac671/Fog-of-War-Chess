@@ -29,6 +29,7 @@ class MCTSNode:
 
 
 class NeuralMCTSAgent(Agent):
+    """Monte Carlo Tree Search, but it uses a Neural Network to rate how good various starting moves are, to determine which branches to explore more"""
     def __init__(self, name: str, color: str, network, iterations: int = 300, exploration_constant: float = 1.5, determinizer=RandomDeterminizer()):
         self.name = name
         self.color = color

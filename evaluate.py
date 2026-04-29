@@ -3,7 +3,7 @@ import torch
 from datetime import timedelta
 
 from engine.game.dark_chess import Game
-from engine.agents.random_agents import RandomAgent, EagerRandomAgent
+from engine.agents.random_agents import RandomAgent, SmartRandomAgent
 from engine.agents.monte_carlo_agent import MonteCarloAgent, MonteCarloTreeSearchAgent
 from engine.agents.neural_network_agents import NeuralMCTSAgent
 from engine.agents.alpha_beta_agent import AlphaBetaAgent
