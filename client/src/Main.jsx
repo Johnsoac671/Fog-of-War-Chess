@@ -3,7 +3,7 @@ import { url } from './App.jsx';
 import { useNavigate } from 'react-router-dom';
 
 const sides = ['White', 'Random', 'Black'];
-const agents = ['Random', 'EagerRandom', 'AlphaBeta', 'MonteCarlo'];
+const agents = ['Random', 'SmartRandom', 'AlphaBeta', 'MonteCarlo'];
 
 export default function Main() {
     const navigate = useNavigate();
@@ -28,11 +28,11 @@ export default function Main() {
             }
             const resJSON = await response.json();
             console.log("Game started:", resJSON);
-            const { game_id, visual, legal_moves, client_side } = resJSON;
+            const { chess_game_id, visual, legal_moves, client_side } = resJSON;
             // store the id for possible restore in future
-            localStorage.setItem('chess_game_id', game_id);
-            const state = { game_id, visual, legal_moves, client_side };
-            // move to the game board
+            localStorage.setItem('chess_game_id', chess_game_id);
+            const state = { chess_game_id, visual, legal_moves, client_side };
+            // move to the game board - sends state stuff over
             navigate('/game', { state });
         } catch (err) {
             console.error("Error:", err);
