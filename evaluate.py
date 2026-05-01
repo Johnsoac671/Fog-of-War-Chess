@@ -8,6 +8,8 @@ from engine.agents.monte_carlo_agent import MonteCarloAgent, MonteCarloTreeSearc
 from engine.agents.neural_network_agents import NeuralMCTSAgent
 from engine.agents.alpha_beta_agent import AlphaBetaAgent
 from network_training import DarkChessNetwork
+# import determinizers
+from engine.determinization.determinizer import IgnoranceIsBlissDeterminizer, BadDeterminizer, RandomDeterminizer
 
 def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
     # state = Game(client_side=1)
@@ -40,16 +42,72 @@ def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
     return state.get_result()
 
 def run_matches(num_games: int = 10) -> None:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
+    # pre stuff for NeuralMCTSAgent agent (my GPU didnt work so used cpu)
+    device = 'cpu'
     networkA = DarkChessNetwork().to(device)
     networkA.load_state_dict(torch.load("dark_chess.pth", map_location=device))
     networkA.eval()
     
+    # round 1
     
-    white_agent = NeuralMCTSAgent(name="Neural", color="W", network=networkA, iterations=300)
-    black_agent = MonteCarloTreeSearchAgent(name="MCTS", color="B", iterations=300)
+    # 8 vs 9 seed
+    # white_agent = MonteCarloTreeSearchAgent(name="", color="W", determinizer=RandomDeterminizer())
+    # black_agent = AlphaBetaAgent(name="", color="B", determinizer=RandomDeterminizer())
+    
+    # 4 vs 13 seed
+    # white_agent = NeuralMCTSAgent(name="", color="W", network=networkA, iterations=100, device='cpu', determinizer=RandomDeterminizer())
+    # black_agent = MonteCarloAgent(name="", color="B", iterations=100, determinizer=IgnoranceIsBlissDeterminizer())
+    
+    # 5 vs 12 seed
+    # white_agent = MonteCarloTreeSearchAgent(name="", color="W", iterations=100, determinizer=BadDeterminizer())
+    # black_agent = RandomAgent(name="", color="B")
+    
+    # 7 vs 10 seed
+    # white_agent = SmartRandomAgent(name="", color="W")
+    # black_agent = NeuralMCTSAgent(name="", color="B", network=networkA, iterations=100, device='cpu', determinizer=IgnoranceIsBlissDeterminizer())
+    
+    # 3 vs 14 seed
+    # white_agent = MonteCarloTreeSearchAgent(name="", color="W", iterations=200, determinizer=IgnoranceIsBlissDeterminizer())
+    # black_agent = AlphaBetaAgent(name="", color="B", max_depth=2, determinizer=BadDeterminizer())
+    
+    # 6 vs 11 seed
+    # white_agent = NeuralMCTSAgent(name="", color="W", network=networkA, iterations=50, device='cpu', determinizer=BadDeterminizer())
+    # black_agent = MonteCarloAgent(name="", color="B", iterations=50, determinizer=BadDeterminizer())
+    
+    # round 2
+    
+    # 1 vs 8 seed
+    # white_agent = MonteCarloAgent(name="", color="W", iterations=50, determinizer=RandomDeterminizer())
+    # black_agent = MonteCarloTreeSearchAgent(name="", color="B", iterations=50, determinizer=RandomDeterminizer())
+    
+    # 4 vs 5 seed
+    # white_agent = NeuralMCTSAgent(name="", color="W", network=networkA, iterations=100, device='cpu', determinizer=RandomDeterminizer())
+    # black_agent = MonteCarloTreeSearchAgent(name="", color="B", iterations=100, determinizer=BadDeterminizer())
+    
+    # 2 vs 10 seed
+    # white_agent = AlphaBetaAgent(name="", color="W", determinizer=IgnoranceIsBlissDeterminizer())
+    # black_agent = NeuralMCTSAgent(name="", color="B", network=networkA, iterations=100, device='cpu', determinizer=IgnoranceIsBlissDeterminizer())
 
+    # 14 vs 6 seed
+    # white_agent = AlphaBetaAgent(name="", color="W", max_depth=2, determinizer=BadDeterminizer())
+    # black_agent = NeuralMCTSAgent(name="", color="B", network=networkA, iterations=100, device='cpu', determinizer=BadDeterminizer())
+    
+    # semifinal
+    
+    # 1 vs 4 seed
+    # white_agent = MonteCarloAgent(name="", color="W", iterations=50, determinizer=RandomDeterminizer())
+    # black_agent = NeuralMCTSAgent(name="", color="B", network=networkA, iterations=50, device='cpu', determinizer=RandomDeterminizer())
+    
+    # 2 vs 14 seed
+    # white_agent = AlphaBetaAgent(name="", color="W", determinizer=IgnoranceIsBlissDeterminizer())
+    # black_agent = AlphaBetaAgent(name="", color="B", max_depth=2, determinizer=BadDeterminizer())
+    
+    # final
+    white_agent = AlphaBetaAgent(name="", color="W", determinizer=IgnoranceIsBlissDeterminizer())
+    black_agent = NeuralMCTSAgent(name="", color="B", network=networkA, iterations=200, device='cpu', determinizer=RandomDeterminizer())
+    
     results = {"W": 0, "B": 0, "D": 0}
     start = time.time()
     
@@ -73,4 +131,4 @@ def run_matches(num_games: int = 10) -> None:
 
 
 if __name__ == "__main__":
-    run_matches(100)
+    run_matches(25)

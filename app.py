@@ -24,7 +24,7 @@ from engine.determinization.determinizer import IgnoranceIsBlissDeterminizer, Ba
 # app = Flask(__name__)
 app = Flask(__name__, static_folder='client/dist', static_url_path='/')
 # allows react client to connect
-# CORS(app)
+CORS(app)
 
 class ClientGameState:
     def __init__(self, game: Game, client_side: int, agent: Agent):

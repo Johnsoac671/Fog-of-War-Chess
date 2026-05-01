@@ -309,7 +309,7 @@ export default function Game() {
 // a chess square
 function ChessSquare({ i, j, visual, handleClick, selectedSquare, selectedMoves }) {
     const piece = visual[i][j];
-    let color = (i + j) % 2 == 0 ? 'bg-amber-100' : 'bg-amber-800';
+    let color = (i + j) % 2 == 0 ? 'bg-amber-800' : 'bg-amber-100';
     let image = image_map[piece];
     let has_fog = piece == 'f';
     // this is a fog square

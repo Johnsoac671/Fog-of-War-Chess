@@ -37,7 +37,7 @@ class BadDeterminizer(Determinizer):
     def __init__(self):
         self.state = Game()
     
-    def determinize_board(self, game: Game) -> Game:
+    def determinize_board(self, game: Game, color: str) -> Game:
         game.copy_into(self.state)
 
         board = self.state.board 
