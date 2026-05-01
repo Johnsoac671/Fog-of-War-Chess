@@ -10,6 +10,7 @@ from engine.agents.alpha_beta_agent import AlphaBetaAgent
 from network_training import DarkChessNetwork
 
 def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
+    # state = Game(client_side=1)
     state = Game()
         
     turns = 0
@@ -25,6 +26,14 @@ def play_game(white_agent, black_agent, max_turns: int = 100) -> str:
             return "D"
 
         state.take_action(move)
+        
+        # print('-----')
+        # print(f"{agent.name} chooses move: {move}")
+        # ret = state.get_frontend_visualization()
+        # for row in ret:
+        #     print(''.join(row))
+        # print('-----\n')
+        
         turns += 1
         
     state.visualize(True)
@@ -58,7 +67,6 @@ def run_matches(num_games: int = 10) -> None:
             f"ETA: {str(timedelta(seconds=int(remaining)))} | "
             f"{i + 1}/{num_games}"
         )
-
     print("\nFinal Results:")
     for key, value in results.items():
         print(f"{key}: {value}")

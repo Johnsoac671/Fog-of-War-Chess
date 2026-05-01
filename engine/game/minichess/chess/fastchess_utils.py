@@ -370,25 +370,36 @@ def prior_math(illegal_moves_mask, dims, child_priors, move_cap, cnoise, value_e
     child_priors /= child_priors.sum()
     return child_priors
 
-def visualize_board(bitboards, dims):
+# modified for fog of war chess
+# modified to return stuff for frontend
+def visualize_board(bitboards, dims, returner=False, visible_mask=None):
+    ret = []
     for i in range(dims[0]):
+        row = []
         for j in range(dims[1]):
             f = flat(i, j, dims)
-            symbol = "."
-            for piece in range(6):
-                if has_bit(bitboards[0, piece], f):
-                    if symbol != ".":
-                        symbol = "#"
-                    else:
+            if visible_mask is not None and not has_bit(visible_mask, f):
+                symbol = "f"
+            else:
+                symbol = "."
+            if symbol != "fog":
+                for piece in range(6):
+                    if has_bit(bitboards[0, piece], f):
                         symbol = INVERSE_PIECE_LOOKUP[piece]
-                if has_bit(bitboards[1, piece], f):
-                    if symbol != ".":
-                        symbol = "#"
-                    else:
+                    if has_bit(bitboards[1, piece], f):
                         symbol = INVERSE_PIECE_LOOKUP[piece].upper()
-            print(symbol + " ", end="")
+            if not returner:
+                print(symbol + " ", end="")
+            else:
+                row.append(symbol)
+        if not returner:
+            print()
+        else:
+            ret.append(row)
+    if not returner:
         print()
-    print()
+    else:
+        return ret
 
 
 def chess_move_to_uci(move, dims):
