@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const sides = ['White', 'Random', 'Black'];
 const agents = ['Random', 'SmartRandom', 'AlphaBeta', 'MonteCarlo', 'MonteCarloTreeSearch', 'NeuralMCTS'];
-const determinizers = ['IgnoranceIsBlissDeterminizer', 'BadDeterminizer', 'CheatingDeterminizer', 'RandomDeterminizer'];
+const determinizers = ['IgnoranceIsBlissDeterminizer', 'BadDeterminizer', 'RandomDeterminizer', 'CheatingDeterminizer'];
 const times = ['0.5s', '1s', '3s', '5s'];
 import info from './assets/info.svg';
 

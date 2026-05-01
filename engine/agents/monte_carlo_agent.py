@@ -8,7 +8,7 @@ from engine.determinization.determinizer import Determinizer, RandomDeterminizer
 
 class MonteCarloAgent(Agent):
     '''To choose a move, it plays <iterations> random games with each move, and chooses the won that wins the most'''
-    def __init__(self, name: str, color: str, iterations: int = 100, determinizer=RandomDeterminizer()):
+    def __init__(self, name: str, color: str, iterations: int = 300, determinizer=RandomDeterminizer()):
         self.name = name
         self.color = color
         self.iterations = iterations
@@ -89,7 +89,7 @@ class MCTSNode:
 
 class MonteCarloTreeSearchAgent(Agent):
     """Uses a tree search to focus on moves that seem more promising"""
-    def __init__(self, name: str, color: str, iterations: int = 2000, exploration_constant: float = math.sqrt(2), determinizer=RandomDeterminizer()):
+    def __init__(self, name: str, color: str, iterations: int = 100, exploration_constant: float = math.sqrt(2), determinizer=RandomDeterminizer()):
         self.name = name
         self.color = color
         self.iterations = iterations

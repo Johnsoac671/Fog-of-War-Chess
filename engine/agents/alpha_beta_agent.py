@@ -6,7 +6,7 @@ from engine.determinization.determinizer import Determinizer, IgnoranceIsBlissDe
 
 class AlphaBetaAgent(Agent):
     
-    def __init__(self, name, color, max_depth=3, determinizer=IgnoranceIsBlissDeterminizer()):
+    def __init__(self, name, color, max_depth=4, determinizer=IgnoranceIsBlissDeterminizer()):
         self.name = name
         self.color = color
         self.max_depth = max_depth
