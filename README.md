@@ -47,6 +47,3 @@ python evaluate.py
 - npm run dev
 
 Then the website should be available at [https://fog-of-war-chess.azurewebsites.net/](https://fog-of-war-chess.azurewebsites.net/)
-npm run dev
-
-Then the website should be available at http://localhost:5173/.
