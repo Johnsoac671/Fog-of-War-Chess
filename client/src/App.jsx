@@ -3,7 +3,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Main from './Main.jsx';
 import Game from './Game.jsx';
 
-export const url = 'http://127.0.0.1:5000';
+export const url = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://127.0.0.1:5000'
+    : '';
 
 export default function App() {
     return (

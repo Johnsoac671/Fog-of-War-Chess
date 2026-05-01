@@ -16,6 +16,8 @@ import w_rook from './assets/w-rook.svg';
 import fog from './assets/fog.svg';
 import x from './assets/x.svg';
 import arrow_back from './assets/arrow-back.svg';
+import arrow_up from './assets/up-arrow.svg';
+import arrow_down from './assets/down-arrow.svg';
 // other stuff
 import { url } from './App.jsx';
 
@@ -66,9 +68,9 @@ export default function Game() {
     const navigate = useNavigate();
     const location = useLocation();
     // location stores stuff passed from Main.jsx
-    const { chess_game_id, visual: initialVisual, legal_moves, client_side } = location.state || {};
+    const { chess_game_id, visual: initialVisual, legal_moves, client_side, time } = location.state || {};
     // time between client moving and backend response
-    const cooldown_ms = useRef(1000);
+    const cooldown_ms = parseFloat(time) * 1000;
     // visual is a 5x5 of what we can see
     const [visual, setVisual] = useState(initialVisual);
     // legal moves is an arr of  [[i, j], [dx, dy], promotion]
@@ -80,7 +82,7 @@ export default function Game() {
     const [promotionInfo, setPromotionInfo] = useState(null);
     // 1 if client won, -1 if client lost, 0 if game is still going
     const [winStatus, setWinStatus] = useState(0);
-    const myTurn = useRef(client_side == WHITE);
+    const [myTurn, setMyTurn] = useState(client_side == WHITE);
 
     const initialMoveMade = useRef(false);
     // check for server going first
@@ -141,13 +143,13 @@ export default function Game() {
             return;
         }
         // wait to make move
-        await sleep(cooldown_ms.current);
+        await sleep(cooldown_ms);
         getServerMove();
     }
 
     // move the selectedSquare to dx, dy
     function processMove(dx, dy) {
-        myTurn.current = false;
+        setMyTurn(false);
         const [i, j] = selectedSquare;
         // move back into format expected by backend
         const row_diff = dx - i;
@@ -181,12 +183,12 @@ export default function Game() {
         if (is_game_over != 0) {
             return;
         }
-        myTurn.current = true;
+        setMyTurn(true);
     }
 
     // runs when square is clicked
     function handleClick(i, j) {
-        if (!myTurn.current) {
+        if (!myTurn) {
             return;
         }
         const pieces_set = client_side == WHITE ? white_pieces : black_pieces;
@@ -216,7 +218,7 @@ export default function Game() {
         // user cancelled
         if (piece == null) {
             setPromotionInfo(null);
-            myTurn.current = true;
+            setMyTurn(true);
             setSelectedSquare(null);
             return;
         }
@@ -259,7 +261,7 @@ export default function Game() {
     const promo_pieces = client_side == WHITE ? white_promo_pieces : black_promo_pieces;
 
     return (
-        <div className='relative h-screen bg-gray-950 flex items-center justify-center text-white'>
+        <div className='relative h-screen bg-gray-900 flex items-center justify-center text-white'>
             <div className={`absolute top-0 left-0 h-20 aspect-square`}>
                 <img src={arrow_back} className={`h-full aspect-square
                 hover:border-2 hover:border-red-500 hover:cursor-pointer rounded-full`}
@@ -273,6 +275,10 @@ export default function Game() {
                 </div>}
             <div className="grid grid-cols-5 grid-rows-5 h-3/4 aspect-square border-2 border-gray-300">
                 {visual_html}
+            </div>
+            {/* Arrow indicating who's turn */}
+            <div className={`absolute left-0 mr-4 h-20 aspect-square`}>
+                <img src={myTurn ? arrow_down : arrow_up} className={`h-full aspect-square`} />
             </div>
             {/* Promotion info at bottom */}
             {promotionInfo &&
